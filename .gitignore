@@ -1,3 +1,4 @@
 PythonPlayground/
 .metadata/
 *.suo
+*.pyc
