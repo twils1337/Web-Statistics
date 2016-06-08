@@ -1,16 +1,20 @@
 from WebManager import WebManager
+from StatisticsCalculator import StatisticsCalculator
 import os
 import time
+import sys
 
 
 def main():
-    wm = WebManager()
+
+    wm = WebManager(db = sys.argv[1])
     wm.load()
-    time.sleep(4)
+    stat_calc = StatisticsCalculator(db = sys.argv[1]);
+    input('Hit enter to continue.')
     os.system('cls')
     for yr in ('2014', '2015', '2016'):
-        wm.parse_n_calc_data(yr)
-        wm.display_info(yr)
-        print "\n"
-if __name__ == "__main__":
+        stat_calc.parse_n_calc_data(yr)
+        stat_calc.display_info(yr)
+        print ('\n')
+if __name__ == '__main__':
     main()
