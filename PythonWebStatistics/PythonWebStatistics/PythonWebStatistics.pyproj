@@ -34,6 +34,9 @@
     <Compile Include="StatisticsCalculator.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="StatsApp.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="WebManager.py" />
   </ItemGroup>
   <ItemGroup>
