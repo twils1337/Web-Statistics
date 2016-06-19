@@ -30,6 +30,9 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ErrorWindow.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="PythonWebStatistics.py" />
     <Compile Include="StatisticsCalculator.py">
       <SubType>Code</SubType>

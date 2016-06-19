@@ -1,7 +1,5 @@
-from WebManager import WebManager
-from StatisticsCalculator import StatisticsCalculator
 import tkinter as tk
-import StatsApp as app
+from StatsApp import StatsApp
 import os
 import time
 import sys
@@ -20,7 +18,7 @@ def main():
         print ('\n')
     '''
     root = tk.Tk()
-    app.StatsApp(root)
+    Stats_app = StatsApp(root, db = sys.argv[1])
     root.mainloop()
 
 if __name__ == '__main__':
