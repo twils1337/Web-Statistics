@@ -1,14 +1,14 @@
 import tkinter as tk
 from tkinter import font
-from WebManager import WebManager
 from ErrorWindow import ErrorWindow
-from StatisticsCalculator import StatisticsCalculator
+from StatisticsCalculator import StatisticsCalculator as SC
+from DataManager import DataManager as DM
 
 class StatsApp(object):
     """tkinter GUI for this application"""
     def __init__(self, window, **kwargs):
-        self.web_manager = WebManager(kwargs['db'])
-        self.stats_calc = StatisticsCalculator(kwargs['db'])
+        self.data_manager = DM(kwargs['db'])
+        self.stats_calc = SC(kwargs['db'])
         #set up font
         self.app_font = font.Font(family="Helvetica", size=12)
         #header
@@ -27,7 +27,7 @@ class StatsApp(object):
         side_bar = tk.Frame(window, bg = 'white', height = 400, relief = 'sunken', borderwidth = 1)
         side_bar.pack(expand = False, fill = 'both', side = 'left', anchor = 'nw')
 
-        #side_bar with data query set up
+        #data query set up/format for side bar
         year_label = tk.Label(side_bar, text = 'Year:', bg = 'white', font = self.app_font)
         year_entry = tk.Entry(side_bar, relief = 'sunken')
         month_label = tk.Label(side_bar, text = 'Month:', bg = 'white', font = self.app_font)
@@ -40,13 +40,16 @@ class StatsApp(object):
         month_entry.grid(row = 1, column = 1)
         day_label.grid(row = 2, column = 0, sticky = 'e')
         day_entry.grid(row = 2, column = 1)
-
+       
     
         #main area
         main_area = tk.Frame(window, bg = 'grey', width = 600, height = 400)
         main_area.pack(expand = True, fill = 'both', side = 'right') 
 
-        submit_button = tk.Button(side_bar, text = 'Submit', command = lambda: self.get_n_calc_data(yr = year_entry, month = month_entry, day = day_entry, display = main_area))
+        submit_button = tk.Button(side_bar, text = 'Submit', command = lambda: self.calc_data_n_display(year = year_entry, 
+                                                                                                        month = month_entry, 
+                                                                                                        day = day_entry, 
+                                                                                                        display = main_area))
         submit_button.grid(columnspan = 3)
 
         window.update_idletasks()
@@ -71,13 +74,22 @@ class StatsApp(object):
         size = self.app_font['size']
         self.app_font.configure(size=size-1)
 
-    def get_n_calc_data(self, **kwargs):
-        if kwargs['yr'].get()=='':
+    def calc_data_n_display(self, **kwargs):
+        year, month, day = kwargs['year'].get(), kwargs['month'].get(), kwargs['day'].get()
+        if year == '': #no year is an invalid query
             ErrorWindow('Error: Please enter a year.')
-        elif kwargs['day'].get() != '' and kwargs['month'].get() == '':
+        if month and (int(month) > 12 or int(month) < 0): #month inp. invalid
+            ErrorWindow('Error: Please enter a number between 1 and 12 for the month.')
+        if day != '' and month == '': #has a day but no month
             ErrorWindow('Error: If you want to enter a day, you must also enter a month.')
         else:
-            #integrate downloading data and calculations here
-            self.web_manager.load()  
+            if len(month) == 1: month = '0' + month
+            if len(day) == 1: day = '0' + day 
+            month = month if month != '' else '-1'
+            day = day if day != '' else '-1'
+            pass
+                     
+
+
 
 

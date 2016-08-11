@@ -1,9 +1,10 @@
 import urllib.request
 import sqlite3
+import time
 
 url_prefix = "https://lpo.dt.navy.mil/data/DM/Environmental_Data_Deep_Moor_"
 
-class WebManager(object):
+class DataManager(object):
     """class that will send requests to a web site for data and fill an sqlite3 database with that data"""
     def __init__(self, db):
         self.url = ''
@@ -16,23 +17,19 @@ class WebManager(object):
             print ('Error: {}'.format(e.message))
         try:
             for yr in ('2014', '2015', '2016'):
-                print ('Loading raw data from {}...'.format(yr))
-                if (self.isYearLoaded(db_connect, yr)):
-                    print ('{} data already loaded. Continuing...\n'.format(yr))
-                    continue
-                else:
+                if not self.isYearLoaded(db_connect, yr):
                     tableData = self.getTable(yr)
                     db_connect.executemany('INSERT INTO raw_data(ID, Date, Time, Air_temp, Barometric_press, Dew_point,\
-                                                                 Relative_humidity, Wind_dir, Wind_gust, Wind_speed\
-                                                                )\
-                                                        VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)', tableData)
-                    print ('Successfully fetched {} data.\n'.format(yr))
+                                            Relative_humidity, Wind_dir, Wind_gust, Wind_speed\
+                                            )\
+                                            VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)', tableData)
         except sqlite3.Error as e:
             print ('Error: {}'.format(e.message))
             db_connect.close()
             return
         db_connect.commit()
         db_connect.close()
+
 
     def isYearLoaded(self, db_connect, year):
         tableSizeQuery = '''SELECT COUNT(*)\

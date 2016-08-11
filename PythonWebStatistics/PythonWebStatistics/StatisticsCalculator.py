@@ -2,27 +2,50 @@ import sqlite3
 
 yrs = ('2014','2015', '2016')
 attribs = ('Wind_speed','Air_temp','Barometric_press')
+#number rep. of month to letter rep. of month
+n2l_month = {'01': 'January', '02': 'February', '03': 'March', '04': 'April', '05': 'May', '06': 'June', 
+             '07': 'July', '08': 'August', '09': 'September', '10': 'October', '11': 'November', '12': 'December'}
+
+Debug = False
 
 class StatisticsCalculator(object):
     """Handles all the calculation for the data from the lake pend oreille web site."""
     def __init__(self, db):
-        self.wind_speed = dict((yr,[]) for yr in yrs)
-        self.air_temperature = dict((yr,[]) for yr in yrs)
-        self.barometric_pressure = dict((yr,[]) for yr in yrs)
-        self.averages = {yr:{attrib:0.0}
-                            for yr in yrs
-                            for attrib in attribs}
-        self.medians = {yr:{attrib:0.0}
-                            for yr in yrs
-                            for attrib in attribs}
+        self.wind_speed = []
+        self.air_temperature = []
+        self.barometric_pressure = []
+        self.averages = {attribute:0.0 for attribute in attribs}
+        self.medians =  {attribute:0.0 for attribute in attribs}
         self.db = db
 
-    def parse_n_calc_data(self,year):
-       self.parse_data(year)
-       self.calc_avgs(year)
-       self.calc_meds(year)
+    def parse_n_calc_data(self, year, month, day):
+        self.parse_data(year, month, day)
+        for attribute in ['Wind_speed','Air_temp','Barometric_press']:
+            self.calc_avg(attribute, year, month, day)
+            self.calc_med(attribute, year, month, day)
 
-    def parse_data(self, year):
+    def create_date_list(self, year, month, day):
+        if month == '-1': #day can't be valid if there's no month -> only year valid
+            return [year]
+        elif day != '-1': #month has to be valid if there is a day -> year,month,day valid
+            return [year,month,day]
+        else: #only year and month valid
+            return [year,month]
+
+    def append_date_filter(self, date):
+        date_appendage = ''
+        if len(date) == 3:
+            if len(date[2]) == 1: date[2] = '0' + date[2]
+            if len(date[1]) == 1: day = '0' + date[1]
+            date_appendage = 'WHERE strftime(\'%Y-%m-%d\',Date) = \'{y}-{m}-{d}\''.format(y=date[0], m=date[1], d=date[2])
+        if len(date) == 2:
+            if len(date[1]) == 1: month = '0' + month
+            date_appendage = 'WHERE strftime(\'%Y-%m\',Date) = \'{y}-{m}\''.format(y=date[0], m=date[1])
+        else: #query whole year
+            date_appendage = 'WHERE strftime(\'%Y\',Date) = \'{y}\''.format(y=date[0])
+        return date_appendage
+
+    def parse_data(self, year, month, day):
         try:
             db_connect = sqlite3.connect(self.db)
         except sqlite3.Error as e:
@@ -30,97 +53,80 @@ class StatisticsCalculator(object):
         db_connect.row_factory = sqlite3.Row
         cursor = db_connect.cursor()
         command = '''SELECT  Wind_speed, Air_temp, Barometric_press\
-                     FROM raw_data\
-                     WHERE strftime('%Y',Date) = \'{}\''''.format(year)
+                     FROM raw_data '''
+        command += append_date_filter( create_date_list(year,month,day) )
         cursor.execute(command)
         for row in cursor:
-            self.wind_speed[year].append(row['Wind_speed'])
-            self.air_temperature[year].append(row['Air_temp'])
-            self.barometric_pressure[year].append(row['Barometric_press'])
+            self.wind_speed.append(row['Wind_speed'])
+            self.air_temperature.append(row['Air_temp'])
+            self.barometric_pressure.append(row['Barometric_press'])
         self.wind_speed[year].sort()
         self.air_temperature[year].sort()
         self.barometric_pressure[year].sort()
         db_connect.close()
 
-    def get_container_str(self, container):
-        container_str = "None"
-        if id(container) == id(self.wind_speed):
-            container_str = "Wind_speed"
-        elif id(container) == id(self.air_temperature):
-            container_str = "Air_temp"
-        elif id(container) == id(self.barometric_pressure):
-            container_str = "Barometric_press"
-        return container_str
-
-    def indexForYear(self, year):
-        yr = -1
-        if year == '2014':
-            yr = 0
-        elif year == '2015':
-            yr = 1
-        else: # year == '2016'
-            yr = 2
-        return yr  
-
-    def indexForContainer(self, container_str):
-        if container_str =="Wind_speed":
-            return 0
-        elif container_str == "Air_temp":
-            return 1
-        elif container_str == "Barometric_press":
-            return 2
-        else:
-            return -1
-
-    def calc_avgs(self, year):
+    def calc_avgs(self, attribute, year, month, day):
         try:
             db_connect = sqlite3.connect(self.db)
         except sqlite3.Error as e:
             print ('Error: {}'.format(e.message))
         cursor = db_connect.cursor()
-        for attrib in attribs:
-            command = '''SELECT avg({0})\
-                            FROM raw_data\
-                            WHERE strftime('%Y',Date) = \'{1}\''''.format(attrib, year)
-            cursor.execute(command)
-            yr_avg = cursor.fetchone()
-            self.averages[year][attrib] = yr_avg[0]
+        command = '''SELECT avg({a})\
+                     FROM raw_data '''.format(attribute)
+        command += append_date_filter( create_date_list(year,month,day) )
+        cursor.execute(command)
+        yr_avg = cursor.fetchone()
+        self.averages[attribute] = yr_avg[0]
         db_connect.close()
 
-    def calc_meds(self, year):
-        self.medians[year]['Wind_speed'] = self.getMed(self.wind_speed, year)
-        self.medians[year]['Air_temp'] = self.getMed(self.air_temperature, year)
-        self.medians[year]['Barometric_press'] = self.getMed(self.barometric_pressure, year)
+    def calc_meds(self, attribute, year, day, month):
+        self.medians['Wind_speed'] = self.getMed(self.wind_speed)
+        self.medians['Air_temp'] = self.getMed(self.air_temperature)
+        self.medians['Barometric_press'] = self.getMed(self.barometric_pressure)
 
-    def getMed(self, container, yr):
-        size = len(self.wind_speed[yr])
-        mid = size//2
-        med = container[yr][mid] if mid%2 == 1\
-               else (container[yr][mid]+container[yr][mid+1])/2.0
+    def getMed(self, attribute_container):
+        size = len(self.wind_speed)
+        mid = (size//2)-1
+        med = attribute_container[mid] if size & 1 else (attribute_container[mid]+container[mid+1])/2.0
         return med
 
-    def display_info(self, year):
-        print("Year: " + year)
-        self.display_mean(year)
-        print
-        self.display_median(year)
+    def get_date_str(self, year, month, day):
+        date_fields_valid = len( create_date_list(year,month,day) )
+        date_str = ''
+        if date_fields_valid == 3:
+            date_str = '{m} {d}, {y}'.format(m=n2l_month[month], d=day if d[0] != '0' else day[1], y=year)
+        elif date_fields_valid == 2:
+            date_str = '{m}, {y}'.format(m=n2l_month[month], y=year)
+        else:
+            date_str = year
+        return date_str
 
-    def display_mean(self, year):
-        print ('''\
+    def display_info(self, year, month, day):
+        date_str = get_date_str(year, month, day)
+        disp_str = '''
+        Date: {}\n
+        \t{}\n
+        \t{}'''.format(date_str, self.mean_format(), self.med_format())
+        if Debug: print(disp_str)
+        return disp_str
+
+    def mean_format(self):
+        str_form = '''\
         Mean:
         \tWind Speed: {:.2f}
         \tAir Temperature: {:.2f}
-        \tBarometric Pressure: {:.2f}'''.format(self.averages[year]['Wind_speed'],
-                                                self.averages[year]['Air_temp'],
-                                                self.averages[year]['Barometric_press']))
+        \tBarometric Pressure: {:.2f}'''.format(self.averages['Wind_speed'],
+                                                self.averages['Air_temp'],
+                                                self.averages['Barometric_press'])
+        return str_form
 
-    def display_median(self, year):
-        print ('''\
+    def med_format(self):
+        str_form = '''\
         Median:
         \tWind Speed: {:.2f}
         \tAir Temperature: {:.2f}
-        \tBarometric Pressure: {:.2f}'''.format(self.medians[year]['Wind_speed'],
-                                                self.medians[year]['Air_temp'],
-                                                self.medians[year]['Barometric_press']))
+        \tBarometric Pressure: {:.2f}'''.format(self.medians['Wind_speed'],
+                                                self.medians['Air_temp'],
+                                                self.medians['Barometric_press'])
         
 
