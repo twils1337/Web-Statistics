@@ -43,26 +43,26 @@ class StatsApp(object):
        
     
         #main area
-        main_area = tk.Frame(window, bg = 'grey', width = 600, height = 400)
+        main_area = tk.Frame(window, bg = 'light gray', width = 600, height = 400)
         main_area.pack(expand = True, fill = 'both', side = 'right') 
-
+        data_label = tk.Label(main_area, bg = 'light gray', text = '', justify = 'left')
+        data_label.grid(row = 0, sticky = 'nw')
         submit_button = tk.Button(side_bar, text = 'Submit', command = lambda: self.calc_data_n_display(year = year_entry, 
                                                                                                         month = month_entry, 
                                                                                                         day = day_entry, 
                                                                                                         display = main_area))
         submit_button.grid(columnspan = 3)
-
         window.update_idletasks()
         #positioning window
         self.center(window)
 
+
     def center(self, window): 
         scrn_width = window.winfo_screenwidth()
         scrn_height = window.winfo_screenheight()
-        win_width, win_height = tuple(int(_) for _ in window.geometry().split('+')[0].split('x'))
-        pos_x = scrn_width//2 - win_width//2
-        pos_y = scrn_height//2 - win_height//2
-        window.geometry('{}x{}+{}+{}'.format(win_width, win_height,pos_x,pos_y))
+        pos_x = scrn_width//2 - 780//2
+        pos_y = scrn_height//2 - 450//2
+        window.geometry('{}x{}+{}+{}'.format(780, 450,pos_x,pos_y))
 
     def make_font_bigger(self):
         '''Make the font a point bigger'''
@@ -75,6 +75,8 @@ class StatsApp(object):
         self.app_font.configure(size=size-1)
 
     def calc_data_n_display(self, **kwargs):
+        data_label = next (iter (kwargs['display'].children.values()))
+        if data_label['text'] != '': data_label['text'] = '' 
         year, month, day = kwargs['year'].get(), kwargs['month'].get(), kwargs['day'].get()
         if year == '': #no year is an invalid query
             ErrorWindow('Error: Please enter a year.')
@@ -87,7 +89,10 @@ class StatsApp(object):
             if len(day) == 1: day = '0' + day 
             month = month if month != '' else '-1'
             day = day if day != '' else '-1'
-            pass
+            display_data = self.stats_calc.get_query_data(year,month,day)
+            data_label['text'] = display_data
+
+
                      
 
 

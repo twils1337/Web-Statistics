@@ -3,7 +3,7 @@ import sqlite3
 yrs = ('2014','2015', '2016')
 attribs = ('Wind_speed','Air_temp','Barometric_press')
 #number rep. of month to letter rep. of month
-n2l_month = {'01': 'January', '02': 'February', '03': 'March', '04': 'April', '05': 'May', '06': 'June', 
+N2L_month = {'01': 'January', '02': 'February', '03': 'March', '04': 'April', '05': 'May', '06': 'June', 
              '07': 'July', '08': 'August', '09': 'September', '10': 'October', '11': 'November', '12': 'December'}
 
 Debug = False
@@ -18,11 +18,19 @@ class StatisticsCalculator(object):
         self.medians =  {attribute:0.0 for attribute in attribs}
         self.db = db
 
+    def reset(self):
+        self.wind_speed = []
+        self.air_temperature = []
+        self.barometric_pressure = []
+        self.averages = {attribute:0.0 for attribute in attribs}
+        self.medians =  {attribute:0.0 for attribute in attribs}
+
     def parse_n_calc_data(self, year, month, day):
+        self.reset()
         self.parse_data(year, month, day)
         for attribute in ['Wind_speed','Air_temp','Barometric_press']:
-            self.calc_avg(attribute, year, month, day)
-            self.calc_med(attribute, year, month, day)
+            self.calc_avgs(attribute, year, month, day)
+            self.calc_meds(attribute, year, month, day)
 
     def create_date_list(self, year, month, day):
         if month == '-1': #day can't be valid if there's no month -> only year valid
@@ -54,15 +62,15 @@ class StatisticsCalculator(object):
         cursor = db_connect.cursor()
         command = '''SELECT  Wind_speed, Air_temp, Barometric_press\
                      FROM raw_data '''
-        command += append_date_filter( create_date_list(year,month,day) )
+        command += self.append_date_filter( self.create_date_list(year,month,day) )
         cursor.execute(command)
         for row in cursor:
             self.wind_speed.append(row['Wind_speed'])
             self.air_temperature.append(row['Air_temp'])
             self.barometric_pressure.append(row['Barometric_press'])
-        self.wind_speed[year].sort()
-        self.air_temperature[year].sort()
-        self.barometric_pressure[year].sort()
+        self.wind_speed.sort()
+        self.air_temperature.sort()
+        self.barometric_pressure.sort()
         db_connect.close()
 
     def calc_avgs(self, attribute, year, month, day):
@@ -72,8 +80,8 @@ class StatisticsCalculator(object):
             print ('Error: {}'.format(e.message))
         cursor = db_connect.cursor()
         command = '''SELECT avg({a})\
-                     FROM raw_data '''.format(attribute)
-        command += append_date_filter( create_date_list(year,month,day) )
+                     FROM raw_data '''.format(a=attribute)
+        command += self.append_date_filter( self.create_date_list(year,month,day) )
         cursor.execute(command)
         yr_avg = cursor.fetchone()
         self.averages[attribute] = yr_avg[0]
@@ -86,36 +94,33 @@ class StatisticsCalculator(object):
 
     def getMed(self, attribute_container):
         size = len(self.wind_speed)
-        mid = (size//2)-1
-        med = attribute_container[mid] if size & 1 else (attribute_container[mid]+container[mid+1])/2.0
+        mid = size//2
+        med = attribute_container[mid] if size & 1 else (attribute_container[mid]+attribute_container[mid-1])/2.0
         return med
 
     def get_date_str(self, year, month, day):
-        date_fields_valid = len( create_date_list(year,month,day) )
+        date_fields_valid = len( self.create_date_list(year,month,day) )
         date_str = ''
         if date_fields_valid == 3:
-            date_str = '{m} {d}, {y}'.format(m=n2l_month[month], d=day if d[0] != '0' else day[1], y=year)
+            date_str = '{m} {d}, {y}'.format(m=N2L_month[month], d=day if day[0] != '0' else day[1], y=year)
         elif date_fields_valid == 2:
-            date_str = '{m}, {y}'.format(m=n2l_month[month], y=year)
+            date_str = '{m}, {y}'.format(m=N2L_month[month], y=year)
         else:
             date_str = year
         return date_str
 
     def display_info(self, year, month, day):
-        date_str = get_date_str(year, month, day)
-        disp_str = '''
-        Date: {}\n
-        \t{}\n
-        \t{}'''.format(date_str, self.mean_format(), self.med_format())
+        date_str = self.get_date_str(year, month, day)
+        disp_str = '''Date: {d}\t{mean}\n{med}'''.format(d=date_str, mean=self.mean_format(), med=self.med_format())
         if Debug: print(disp_str)
         return disp_str
 
     def mean_format(self):
-        str_form = '''\
+        str_form = '''
         Mean:
         \tWind Speed: {:.2f}
         \tAir Temperature: {:.2f}
-        \tBarometric Pressure: {:.2f}'''.format(self.averages['Wind_speed'],
+        \tBarometric Pressure: {:.2f}\n'''.format(self.averages['Wind_speed'],
                                                 self.averages['Air_temp'],
                                                 self.averages['Barometric_press'])
         return str_form
@@ -128,5 +133,10 @@ class StatisticsCalculator(object):
         \tBarometric Pressure: {:.2f}'''.format(self.medians['Wind_speed'],
                                                 self.medians['Air_temp'],
                                                 self.medians['Barometric_press'])
+        return str_form
+
+    def get_query_data(self, year, month, day):
+        self.parse_n_calc_data(year,month,day)
+        return self.display_info(year,month,day)
         
 
